@@ -786,8 +786,13 @@ mod tests {
         let tmp_dir = tempfile::tempdir().expect("Failed to create temporary directory");
         let file_path = tmp_dir.path().join("overloads.info");
         let functions = [
-            ("_Z1fi", "f(int)", 1, true),
-            ("_Z1fii", "f(int, int)", 2, false),
+            ("_ZN3MapIidE4findEi", "Map<int, double>::find(int)", 1, true),
+            (
+                "_ZN3MapIidE4findEii",
+                "Map<int, double>::find(int, int)",
+                2,
+                false,
+            ),
             ("_ZN3Foo3barEv", "Foo::bar()", 3, true),
             ("_ZNK3Foo3barEv", "Foo::bar() const", 4, false),
         ];
@@ -829,6 +834,14 @@ mod tests {
                 vec![("overloads.cpp".to_string(), expected)],
                 "demangle={demangle}"
             );
+
+            // Already-demangled names must survive another export and read.
+            let (path, coverage) = &parsed[0];
+            let results = [(PathBuf::from(path), PathBuf::from(path), coverage.clone())];
+            output_lcov(&results, Some(&file_path), demangle);
+            let reparsed =
+                crate::parser::parse_lcov(read_file(&file_path).into_bytes(), true, false).unwrap();
+            assert_eq!(reparsed, parsed, "second pass, demangle={demangle}");
         }
     }
 
